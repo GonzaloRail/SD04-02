@@ -2,14 +2,11 @@ import os
 import uuid
 import cv2
 import numpy as np
-from flask import Flask, render_template, request, redirect, url_for, send_file
+from flask import Flask, render_template, request, redirect, url_for, send_file, jsonify
 from werkzeug.utils import secure_filename
 from PIL import Image
 import io
 import base64
-
-# Ya no importamos cliente.py, implementaremos la función aquí
-# from cliente import aplicar_otsu
 
 app = Flask(__name__)
 
@@ -102,7 +99,33 @@ def upload_file():
         option = request.form.get('option', 'server_to_client')
         print(f"Opción seleccionada: {option}")
         
-        return redirect(url_for('process_image', filename=unique_filename, option=option))
+        # Verificar si la imagen ya fue procesada en el cliente
+        client_processed = request.form.get('client_processed', 'false') == 'true'
+        
+        if option == 'client_processing' or client_processed:
+            # La imagen ya fue procesada por el cliente y solo necesitamos
+            # crear una entrada en processed_folder para referencia
+            processed_filename = f"processed_{unique_filename}"
+            processed_path = os.path.join(app.config['PROCESSED_FOLDER'], processed_filename)
+            
+            # Simplemente copiar la imagen ya procesada del cliente
+            # En un entorno real, esta imagen ya vendría procesada del cliente
+            import shutil
+            shutil.copy(filepath, processed_path)
+            
+            # Rutas relativas para mostrar en la plantilla
+            original_image = f"images/uploads/{unique_filename}"
+            processed_image = f"images/processed/{processed_filename}"
+            
+            return render_template('result.html', 
+                                original_image=original_image, 
+                                processed_image=processed_image,
+                                filename=processed_filename,
+                                option='client_processing',
+                                client_processed=True)
+        else:
+            # Procesamiento normal en el servidor
+            return redirect(url_for('process_image', filename=unique_filename, option=option))
     
     print("Archivo no permitido o no válido")
     return redirect(url_for('index'))
@@ -116,7 +139,14 @@ def select_server_image():
     print(f"Opción seleccionada: {option}")
     
     if selected_image:
-        return redirect(url_for('process_image', filename=selected_image, option=option))
+        if option == 'client_processing':
+            # Para procesar en cliente, enviamos directamente a la página de procesamiento cliente
+            return render_template('client_processing.html', 
+                                  image_url=url_for('static', filename=f'images/uploads/{selected_image}'),
+                                  filename=selected_image)
+        else:
+            # Procesamiento normal en servidor
+            return redirect(url_for('process_image', filename=selected_image, option=option))
     
     print("No se seleccionó ninguna imagen")
     return redirect(url_for('index'))
@@ -189,6 +219,52 @@ def download_original_file(filename):
         original_name = filename
     
     return send_file(file_path, as_attachment=True, download_name=f"original_{original_name}")
+
+@app.route('/get_image/<path:filename>')
+def get_image(filename):
+    """Endpoint para obtener una imagen para procesamiento en cliente"""
+    file_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+    
+    if not os.path.exists(file_path):
+        return jsonify({'error': 'Imagen no encontrada'}), 404
+    
+    return send_file(file_path)
+
+@app.route('/save_processed_image', methods=['POST'])
+def save_processed_image():
+    """Endpoint para guardar una imagen procesada en el cliente"""
+    data = request.get_json()
+    
+    if not data or 'image_data' not in data or 'filename' not in data:
+        return jsonify({'error': 'Datos incompletos'}), 400
+    
+    # Obtener datos de la imagen (data URL)
+    image_data = data['image_data']
+    original_filename = data['filename']
+    
+    try:
+        # Extraer datos base64 de la URL (quitar el prefijo 'data:image/png;base64,')
+        image_data = image_data.split(',')[1]
+        image_bytes = base64.b64decode(image_data)
+        
+        # Generar nombre único para la imagen procesada
+        processed_filename = f"processed_{original_filename}"
+        processed_path = os.path.join(app.config['PROCESSED_FOLDER'], processed_filename)
+        
+        # Guardar imagen
+        with open(processed_path, 'wb') as f:
+            f.write(image_bytes)
+        
+        return jsonify({
+            'success': True,
+            'message': 'Imagen procesada guardada exitosamente',
+            'processed_filename': processed_filename,
+            'url': url_for('static', filename=f'images/processed/{processed_filename}')
+        })
+    
+    except Exception as e:
+        print(f"ERROR al guardar imagen procesada: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     print(f"Directorio actual: {os.getcwd()}")

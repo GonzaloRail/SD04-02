@@ -62,9 +62,38 @@ body {
     margin: 0 auto;
 }
 
+/* Estilos para vista previa de procesamiento en cliente */
+#previewContainer {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    margin-top: 20px;
+}
+
+.preview-item {
+    flex: 0 0 48%;
+    text-align: center;
+    margin-bottom: 15px;
+    padding: 10px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.preview-image {
+    max-height: 300px;
+    margin: 10px auto;
+    display: block;
+    border-radius: 5px;
+}
+
 /* Ajustes responsivos */
 @media (max-width: 768px) {
     .card-img-top {
         height: 120px;
+    }
+    
+    .preview-item {
+        flex: 0 0 100%;
     }
 }
