@@ -1,6 +1,4 @@
 # SD04-02
-Aquí tienes tu documento adaptado para ser usado directamente como `README.md` en formato Markdown para tu proyecto **"Sistema Distribuido de Procesamiento de Imágenes con Algoritmo de Otsu"**:
-
 ---
 
 # Sistema Distribuido de Procesamiento de Imágenes con Algoritmo de Otsu
