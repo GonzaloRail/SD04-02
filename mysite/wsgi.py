@@ -6,7 +6,7 @@ import sys
 import os
 
 # Añadir el directorio de la aplicación al path
-path = 'D:\TareaSDTeoria\SD04-02\mysite'
+path = '/home/GonzaR/SD04-02'
 if path not in sys.path:
     sys.path.append(path)
 
